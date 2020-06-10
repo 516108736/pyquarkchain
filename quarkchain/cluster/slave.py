@@ -463,14 +463,14 @@ class MasterConnection(ClusterConnection):
                     )
                     raise e
 
-                Logger.info(
-                    "[{}] sync request from master, downloaded {} blocks ({} - {})".format(
-                        req.branch.to_str(),
-                        len(block_chain),
-                        block_chain[0].header.height,
-                        block_chain[-1].header.height,
-                    )
-                )
+                # Logger.info(
+                #     "[{}] sync request from master, downloaded {} blocks ({} - {})".format(
+                #         req.branch.to_str(),
+                #         len(block_chain),
+                #         block_chain[0].header.height,
+                #         block_chain[-1].header.height,
+                #     )
+                # )
 
                 # Step 1: Check if the len is correct
                 if len(block_chain) != len(blocks_to_download):

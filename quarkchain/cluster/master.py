@@ -276,21 +276,21 @@ class SyncTask:
         return resp.root_block_list
 
     async def __add_block(self, root_block):
-        Logger.info(
-            "[R] syncing root block {} {}".format(
-                root_block.header.height, root_block.header.get_hash().hex()
-            )
-        )
+        # Logger.info(
+        #     "[R] syncing root block {} {}".format(
+        #         root_block.header.height, root_block.header.get_hash().hex()
+        #     )
+        # )
         start = time.time()
         await self.__sync_minor_blocks(root_block.minor_block_header_list)
         await self.master_server.add_root_block(root_block)
         self.stats.blocks_added += 1
         elapse = time.time() - start
-        Logger.info(
-            "[R] synced root block {} {} took {:.2f} seconds".format(
-                root_block.header.height, root_block.header.get_hash().hex(), elapse
-            )
-        )
+        # Logger.info(
+        #     "[R] synced root block {} {} took {:.2f} seconds".format(
+        #         root_block.header.height, root_block.header.get_hash().hex(), elapse
+        #     )
+        # )
 
     async def __sync_minor_blocks(self, minor_block_header_list):
         minor_block_download_map = dict()
@@ -717,9 +717,9 @@ class SlaveConnection(ClusterConnection):
             self.master_server.root_state.add_validated_minor_block_hash(
                 minor_block_header.get_hash(), coinbase_amount_map.balance_map
             )
-            Logger.info(
-                "adding {} mblock to db".format(minor_block_header.get_hash().hex())
-            )
+            # Logger.info(
+            #     "adding {} mblock to db".format(minor_block_header.get_hash().hex())
+            # )
         return AddMinorBlockHeaderListResponse(error_code=0)
 
 
