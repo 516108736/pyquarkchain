@@ -247,13 +247,13 @@ class SyncTask:
                     self.__download_blocks(block_header_chain[:ROOT_BLOCK_BATCH_SIZE]),
                     SYNC_TIMEOUT,
                 )
-                Logger.info(
-                    "[R] downloaded {} blocks ({} - {}) from peer".format(
-                        len(block_chain),
-                        block_chain[0].header.height,
-                        block_chain[-1].header.height,
-                    )
-                )
+                # Logger.info(
+                #     "[R] downloaded {} blocks ({} - {}) from peer".format(
+                #         len(block_chain),
+                #         block_chain[0].header.height,
+                #         block_chain[-1].header.height,
+                #     )
+                # )
                 if len(block_chain) != len(block_header_chain[:ROOT_BLOCK_BATCH_SIZE]):
                     # TODO: tag bad peer
                     raise RuntimeError("Bad peer missing blocks for headers they have")
@@ -350,11 +350,11 @@ class Synchronizer:
             return
 
         self.tasks[peer] = header
-        Logger.info(
-            "[R] added {} {} to sync queue (running={})".format(
-                header.height, header.get_hash().hex(), self.running
-            )
-        )
+        # Logger.info(
+        #     "[R] added {} {} to sync queue (running={})".format(
+        #         header.height, header.get_hash().hex(), self.running
+        #     )
+        # )
         if not self.running:
             self.running = True
             asyncio.ensure_future(self.__run())
@@ -404,7 +404,7 @@ class Synchronizer:
         return best_header, best_peer
 
     async def __run(self):
-        Logger.info("[R] synchronizer started!")
+        # Logger.info("[R] synchronizer started!")
         while len(self.tasks) > 0:
             self.running_task = self._pop_best_task()
             header, peer = self.running_task
@@ -412,20 +412,20 @@ class Synchronizer:
                 check(len(self.tasks) == 0)
                 break
             task = SyncTask(header, peer, self.stats, self.root_block_header_list_limit)
-            Logger.info(
-                "[R] start sync task {} {}".format(
-                    header.height, header.get_hash().hex()
-                )
-            )
+            # Logger.info(
+            #     "[R] start sync task {} {}".format(
+            #         header.height, header.get_hash().hex()
+            #     )
+            # )
             await task.sync()
-            Logger.info(
-                "[R] done sync task {} {}".format(
-                    header.height, header.get_hash().hex()
-                )
-            )
+            # Logger.info(
+            #     "[R] done sync task {} {}".format(
+            #         header.height, header.get_hash().hex()
+            #     )
+            # )
         self.running = False
         self.running_task = None
-        Logger.info("[R] synchronizer finished!")
+        # Logger.info("[R] synchronizer finished!")
 
 
 class SlaveConnection(ClusterConnection):

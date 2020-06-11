@@ -528,7 +528,7 @@ class JSONRPCHttpServer:
 
     async def __handle(self, request):
         request = await request.text()
-        Logger.info(request)
+        # Logger.info(request)
 
         d = dict()
         try:

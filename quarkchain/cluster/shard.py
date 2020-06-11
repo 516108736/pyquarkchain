@@ -245,12 +245,12 @@ class PeerShardConnection(VirtualConnection):
         if self.shard_state.header_tip.height >= m_header.height:
             return
 
-        Logger.info_every_sec(
-            "[{}] received new tip with height {}".format(
-                m_header.branch.to_str(), m_header.height
-            ),
-            5,
-        )
+        # Logger.info_every_sec(
+        #     "[{}] received new tip with height {}".format(
+        #         m_header.branch.to_str(), m_header.height
+        #     ),
+        #     5,
+        # )
         self.shard.synchronizer.add_task(m_header, self)
 
     async def handle_new_transaction_list_command(self, op_code, cmd, rpc_id):
@@ -695,14 +695,14 @@ class Shard:
             raise e
 
         self.state.new_block_header_pool[block.header.get_hash()] = block.header
-
-        Logger.info(
-            "[{}/{}] got new block with height {}".format(
-                block.header.branch.get_chain_id(),
-                block.header.branch.get_shard_id(),
-                block.header.height,
-            )
-        )
+        #
+        # Logger.info(
+        #     "[{}/{}] got new block with height {}".format(
+        #         block.header.branch.get_chain_id(),
+        #         block.header.branch.get_shard_id(),
+        #         block.header.height,
+        #     )
+        # )
 
         self.broadcast_new_block(block)
         await self.add_block(block)
