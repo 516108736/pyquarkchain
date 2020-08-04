@@ -111,12 +111,11 @@ def scf_blockHeight(args):
                 res = f.cli.send(
                     jsonrpcclient.Request("getRootBlockByHeight"), timeout=TIMEOUT
                 )
-                if not res:
-                    raise RuntimeError("Failed to get latest block height")
+                print("res",res)
                 data=int(res["height"], 16)
                 print("ip",ip,"data",data)
         except Exception as e:
-            print("failed to get latest root block height", e)
+            print("failed to get latest root block height---", e)
             # Rpc not ready, wait and try again.
             time.sleep(3)
             continue
