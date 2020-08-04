@@ -94,6 +94,32 @@ def prometheus_balance(args):
                 balance_gauge.labels(shard_id, token_name).set(shard_bal)
         time.sleep(args.interval)
 
+def scf_blockHeight(args):
+
+    ipList=args.blockHeightIpList.strip().split(seq=",")
+    # block_height_by_ip=Gauge("block_height_by_ip","block height by ip")
+
+    fetchers=[]
+    for ip in ipList:
+        fetchers[ip]=Fetcher(ip,TIMEOUT)
+    print("ffffffffffffffffffffff",type(fetchers),fetchers)
+    while True:
+        try:
+            print("start---")
+            for ip,f in fetchers.keys():
+                res = f.cli.send(
+                    jsonrpcclient.Request("getRootBlockByHeight"), timeout=TIMEOUT
+                )
+                if not res:
+                    raise RuntimeError("Failed to get latest block height")
+                data=int(res["height"], 16)
+                print("ip",ip,"data",data)
+        except Exception as e:
+            print("failed to get latest root block height", e)
+            # Rpc not ready, wait and try again.
+            time.sleep(3)
+            continue
+        time.sleep(args.interval)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -113,8 +139,17 @@ def main():
         default="QKC",
         help="tokens to be monitored, separated by comma",
     )
+
+
     parser.add_argument("--host", type=str, help="host address of the cluster")
     parser.add_argument("--port", type=int, help="prometheus expose port", default=8000)
+
+    parser.add_argument(
+        "--blockHeightIpList",
+        type=str,
+        help="scf"
+    )
+
     args = parser.parse_args()
 
     host = "http://localhost:38391"
@@ -131,7 +166,8 @@ def main():
     fetcher = Fetcher(host, TIMEOUT)
 
     if args.balance:
-        prometheus_balance(args)
+        # prometheus_balance(args)
+        scf_blockHeight(args)
 
 
 if __name__ == "__main__":
