@@ -104,7 +104,7 @@ def scf_blockHeight(args):
     print("ffff",type(fetchers),fetchers)
     for ip in ipList:
         fetchers[ip]=Fetcher(ip,TIMEOUT)
-        tag="block_height"+ip[8:10]
+        tag="block_height"+ip[7:9]
         block_height_gauge[ip]=Gauge("block_height_"+tag,"dsadasdsadsa")
     print("ffffffffffffffffffffff",type(fetchers),fetchers)
     while True:
