@@ -111,7 +111,7 @@ def scf_blockHeight(args):
                 res = f.cli.send(
                     jsonrpcclient.Request("getRootBlockByHeight"), timeout=TIMEOUT
                 )
-                print("res",res)
+                # print("res",res)
                 data=int(res["height"], 16)
                 print("ip",ip,"data",data)
         except Exception as e:
