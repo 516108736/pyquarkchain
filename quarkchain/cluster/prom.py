@@ -100,9 +100,11 @@ def scf_blockHeight(args):
     # block_height_by_ip=Gauge("block_height_by_ip","block height by ip")
 
     fetchers={}
+    block_height_gauge={}
     print("ffff",type(fetchers),fetchers)
     for ip in ipList:
         fetchers[ip]=Fetcher(ip,TIMEOUT)
+        block_height_gauge[ip]=Gauge("block_height_"+ip,"dsadasdsadsa")
     print("ffffffffffffffffffffff",type(fetchers),fetchers)
     while True:
         try:
@@ -111,9 +113,11 @@ def scf_blockHeight(args):
                 res = f.cli.send(
                     jsonrpcclient.Request("getRootBlockByHeight"), timeout=TIMEOUT
                 )
-                # print("res",res)
+                if not res:
+                    raise RuntimeError("Failed to get latest block height-115")
                 data=int(res["height"], 16)
                 print("ip",ip,"data",data)
+                block_height_gauge[ip].set(data)
         except Exception as e:
             print("failed to get latest root block height---", e)
             # Rpc not ready, wait and try again.
