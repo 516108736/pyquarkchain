@@ -11,7 +11,7 @@ from async_armor import armor
 from decorator import decorator
 from jsonrpcserver import config
 from jsonrpcserver.async_methods import AsyncMethods
-from jsonrpcserver.exceptions import InvalidParams, InvalidRequest
+from jsonrpcserver.exceptions import InvalidParams, InvalidRequest, ServerError
 
 from quarkchain.cluster.master import MasterServer
 from quarkchain.cluster.rpc import AccountBranchData
@@ -43,11 +43,9 @@ from quarkchain.cluster.subscription import SUB_LOGS
 DEFAULT_STARTGAS = 100 * 1000
 DEFAULT_GASPRICE = 10 * denoms.gwei
 
-
 # Allow 16 MB request for submitting big blocks
 # TODO: revisit this parameter
 JSON_RPC_CLIENT_REQUEST_MAX_SIZE = 16 * 1024 * 1024
-
 
 # Disable jsonrpcserver logging
 config.log_requests = False
@@ -76,8 +74,10 @@ def quantity_encoder(i):
     return hex(i)
 
 
-def data_decoder(hex_str):
+def data_decoder(hex_str, allow_optional=False):
     """Decode `hexStr` representing unformatted hex_str."""
+    if allow_optional and hex_str is None:
+        return None
     if not hex_str.startswith("0x"):
         raise InvalidParams("Invalid hex_str encoding")
     try:
@@ -239,7 +239,6 @@ def minor_block_encoder(block, include_transactions=False, extra_info=None):
 
 
 def minor_block_header_encoder(header: MinorBlockHeader) -> Dict:
-
     d = {
         "id": id_encoder(header.get_hash(), header.branch.get_full_shard_id()),
         "height": quantity_encoder(header.height),
@@ -1276,6 +1275,34 @@ class JSONRPCHttpServer:
         return await self.master.set_target_block_time(
             root_block_time, minor_block_time
         )
+
+    @public_methods.add
+    @decode_arg("block_id", id_decoder)
+    @decode_arg("token_id", quantity_decoder)  # default: QKC
+    @decode_arg("start", data_decoder, allow_optional=True)
+    @decode_arg("limit", quantity_decoder)
+    async def getTotalBalance(
+        self, block_id, token_id="0x8bb0", start=None, limit="0x64"
+    ):
+        if limit > 10000:
+            limit = 10000
+        block_hash, full_shard_key = block_id
+        full_shard_id = self.master.env.quark_chain_config.get_full_shard_id_by_full_shard_key(
+            full_shard_key
+        )
+        try:
+            result = await self.master.get_total_balance(
+                Branch(full_shard_id), block_hash, token_id, start, limit
+            )
+        except:
+            raise ServerError
+        if not result:
+            raise InvalidRequest
+        total_balance, next_start = result
+        return {
+            "totalBalance": quantity_encoder(total_balance),
+            "next": data_encoder(next_start),
+        }
 
     @private_methods.add
     async def setMining(self, mining):

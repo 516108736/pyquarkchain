@@ -1,7 +1,9 @@
 import random
+import math
 import time
 import unittest
 from fractions import Fraction
+from os import urandom
 from typing import Optional
 
 from quarkchain.cluster.shard_state import ShardState
@@ -78,6 +80,72 @@ class TestShardState(unittest.TestCase):
         self.assertEqual(
             state.header_tip.coinbase_amount_map.balance_map,
             {self.genesis_token: 2500000000000000000},
+        )
+
+    def test_get_total_balance(self):
+        acc_size = 60
+        id_list = [Identity.create_random_identity() for _ in range(acc_size)]
+        acc_list = [Address.create_from_identity(i, full_shard_key=0) for i in id_list]
+        batch_size = [1, 2, 3, 4, 6, 66]
+        env = get_test_env(
+            genesis_account=acc_list[0], genesis_minor_quarkash=100000000
+        )
+
+        qkc_token = token_id_encode("QKC")
+        state = create_default_shard_state(env=env)
+        # Add a root block to have all the shards initialized
+        root_block = state.root_tip.create_block_to_append().finalize()
+        state.add_root_block(root_block)
+        for nonce, acc in enumerate(acc_list[1:]):
+            tx = create_transfer_transaction(
+                shard_state=state,
+                key=id_list[0].get_key(),
+                from_address=acc_list[0],
+                to_address=acc,
+                value=100,
+                transfer_token_id=qkc_token,
+                gas_price=0,
+                nonce=nonce,
+            )
+            self.assertTrue(state.add_tx(tx), "the %d tx fails to be added" % nonce)
+
+        b1 = state.create_block_to_mine(address=acc_list[0])
+        state.finalize_and_add_block(b1)
+
+        self.assertEqual(
+            state.get_token_balance(acc_list[0].recipient, self.genesis_token),
+            100000000
+            - 100 * (acc_size - 1)
+            + self.get_after_tax_reward(self.shard_coinbase),
+        )
+        self.assertEqual(
+            state.get_token_balance(acc_list[1].recipient, self.genesis_token), 100
+        )
+
+        exp_balance = 100000000 + self.get_after_tax_reward(self.shard_coinbase)
+        for batch in batch_size:
+            num_of_calls = math.ceil(float(acc_size + 1) / batch)
+            total = 0
+            next_start = None
+            for _ in range(num_of_calls):
+                balance, next_start = state.get_total_balance(
+                    qkc_token, state.header_tip.get_hash(), batch, next_start
+                )
+                total += balance
+            self.assertEqual(
+                exp_balance,
+                total,
+                "testcase with batch size %d return balance failed" % batch,
+            )
+            self.assertEqual(
+                bytes(32),
+                next_start,
+                "testcase with batch size %d return start failed" % batch,
+            )
+
+        # Random start should also succeed
+        state.get_total_balance(
+            qkc_token, state.header_tip.get_hash(), 1, start=urandom(32)
         )
 
     def test_init_genesis_state(self):
@@ -2078,8 +2146,8 @@ class TestShardState(unittest.TestCase):
         env.quark_chain_config.SKIP_MINOR_DIFFICULTY_CHECK = False
         diff_calc = EthDifficultyCalculator(cutoff=9, diff_factor=2048, minimum_diff=1)
         env.quark_chain_config.NETWORK_ID = (
-            1
-        )  # other network ids will skip difficulty check
+            1  # other network ids will skip difficulty check
+        )
         state = create_default_shard_state(env=env, shard_id=0, diff_calc=diff_calc)
 
         # Check new difficulty
@@ -2897,19 +2965,16 @@ class TestShardState(unittest.TestCase):
         )
         state = create_default_shard_state(env=env)
         # Create failed contract with revert operation
-        contract_creation_with_revert_bytecode = (
-            "6080604052348015600f57600080fd5b50600080fdfe"
-        )
+        contract_creation_with_revert_bytecode = "6080604052348015600f57600080fd5b506040517f08c379a00000000000000000000000000000000000000000000000000000000081526004018080602001828103825260028152602001807f686900000000000000000000000000000000000000000000000000000000000081525060200191505060405180910390fdfe"
         """
         pragma solidity ^0.5.1;
         contract RevertContract {
             constructor() public {
-                revert();
+                revert("hi");
             }
         }
         """
         # This transaction cost is calculated by remix, which is different than the opcodes.GTXCOST due to revert.
-        FAILED_TRANSACTION_COST = 54416
         tx = contract_creation_tx(
             shard_state=state,
             key=id1.get_key(),
@@ -2930,23 +2995,25 @@ class TestShardState(unittest.TestCase):
         # Check receipts and make sure the transaction is failed
         self.assertEqual(len(state.evm_state.receipts), 1)
         self.assertEqual(state.evm_state.receipts[0].state_root, b"")
-        self.assertEqual(state.evm_state.receipts[0].gas_used, FAILED_TRANSACTION_COST)
+
+        failed_gas_cost = 58025
+        self.assertEqual(state.evm_state.receipts[0].gas_used, failed_gas_cost)
 
         # Make sure the FAILED_TRANSACTION_COST is consumed by the sender
         self.assertEqual(
             state.get_token_balance(id1.recipient, self.genesis_token),
-            200 * 10 ** 18 - FAILED_TRANSACTION_COST,
+            200 * 10 ** 18 - failed_gas_cost,
         )
         # Make sure the accurate gas fee is obtained by the miner
         self.assertEqual(
             state.get_token_balance(acc2.recipient, self.genesis_token),
-            self.get_after_tax_reward(FAILED_TRANSACTION_COST + self.shard_coinbase),
+            self.get_after_tax_reward(failed_gas_cost + self.shard_coinbase),
         )
         self.assertEqual(
             b1.header.coinbase_amount_map.balance_map,
             {
                 env.quark_chain_config.genesis_token: self.get_after_tax_reward(
-                    FAILED_TRANSACTION_COST + self.shard_coinbase
+                    failed_gas_cost + self.shard_coinbase
                 )
             },
         )

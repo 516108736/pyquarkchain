@@ -39,6 +39,8 @@ from quarkchain.cluster.rpc import (
     MinorBlockExtraInfo,
     GetRootChainStakesRequest,
     GetRootChainStakesResponse,
+    GetTotalBalanceRequest,
+    GetTotalBalanceResponse,
 )
 from quarkchain.cluster.rpc import (
     AddRootBlockResponse,
@@ -480,9 +482,10 @@ class MasterConnection(ClusterConnection):
                     )
 
                 # Step 2: Check if the blocks are valid
-                add_block_success, coinbase_amount_list = await self.slave_server.add_block_list_for_sync(
-                    block_chain
-                )
+                (
+                    add_block_success,
+                    coinbase_amount_list,
+                ) = await self.slave_server.add_block_list_for_sync(block_chain)
                 if not add_block_success:
                     raise RuntimeError(
                         "Failed to add minor blocks for syncing root block"
@@ -562,11 +565,23 @@ class MasterConnection(ClusterConnection):
         )
         return GetRootChainStakesResponse(0, stakes, signer)
 
+    async def handle_get_total_balance(
+        self, req: GetTotalBalanceRequest
+    ) -> GetTotalBalanceResponse:
+        error_code = 0
+        try:
+            total_balance, next_start = self.slave_server.get_total_balance(
+                req.branch, req.start, req.token_id, req.minor_block_hash, req.limit
+            )
+            return GetTotalBalanceResponse(error_code, total_balance, next_start)
+        except Exception:
+            error_code = 1
+            return GetTotalBalanceResponse(error_code, 0, b"")
+
 
 MASTER_OP_NONRPC_MAP = {
     ClusterOp.DESTROY_CLUSTER_PEER_CONNECTION_COMMAND: MasterConnection.handle_destroy_cluster_peer_connection_command
 }
-
 
 MASTER_OP_RPC_MAP = {
     ClusterOp.PING: (ClusterOp.PONG, MasterConnection.handle_ping),
@@ -678,6 +693,10 @@ MASTER_OP_RPC_MAP = {
         ClusterOp.GET_ROOT_CHAIN_STAKES_RESPONSE,
         MasterConnection.handle_get_root_chain_stakes,
     ),
+    ClusterOp.GET_TOTAL_BALANCE_REQUEST: (
+        ClusterOp.GET_TOTAL_BALANCE_RESPONSE,
+        MasterConnection.handle_get_total_balance,
+    ),
 }
 
 
@@ -759,7 +778,6 @@ class SlaveConnection(Connection):
 
 
 SLAVE_OP_NONRPC_MAP = {}
-
 
 SLAVE_OP_RPC_MAP = {
     ClusterOp.PING: (ClusterOp.PONG, SlaveConnection.handle_ping),
@@ -1408,6 +1426,18 @@ class SlaveServer:
         shard = self.shards.get(branch, None)
         check(shard is not None)
         return shard.state.get_root_chain_stakes(address.recipient, block_hash)
+
+    def get_total_balance(
+        self,
+        branch: Branch,
+        start: Optional[bytes],
+        token_id: int,
+        block_hash: bytes,
+        limit: int,
+    ) -> Tuple[int, bytes]:
+        shard = self.shards.get(branch, None)
+        check(shard is not None)
+        return shard.state.get_total_balance(token_id, block_hash, limit, start)
 
 
 def parse_args():

@@ -24,7 +24,6 @@ from quarkchain.core import (
     MinorBlockMeta,
     PoSWInfo,
     RootBlock,
-    SerializedEvmTransaction,
     TokenBalanceMap,
     TransactionReceipt,
     TypedTransaction,
@@ -744,9 +743,10 @@ class ShardState:
             x_shard_receive_tx_list = []
         if evm_state is None:
             evm_state = self._get_evm_state_for_new_block(block, ephemeral=False)
-        xtx_list, evm_state.xshard_tx_cursor_info = self.__run_cross_shard_tx_with_cursor(
-            evm_state=evm_state, mblock=block
-        )
+        (
+            xtx_list,
+            evm_state.xshard_tx_cursor_info,
+        ) = self.__run_cross_shard_tx_with_cursor(evm_state=evm_state, mblock=block)
         x_shard_receive_tx_list.extend(xtx_list)
 
         # Adjust inshard gas limit if xshard gas limit is not exhausted
@@ -1271,9 +1271,10 @@ class ShardState:
         # Cross-shard receive must be handled before including tx from tx_queue
         # This is part of consensus.
         block.header.hash_prev_root_block = self.root_tip.get_hash()
-        xtx_list, evm_state.xshard_tx_cursor_info = self.__run_cross_shard_tx_with_cursor(
-            evm_state=evm_state, mblock=block
-        )
+        (
+            xtx_list,
+            evm_state.xshard_tx_cursor_info,
+        ) = self.__run_cross_shard_tx_with_cursor(evm_state=evm_state, mblock=block)
 
         # Adjust inshard tx limit if xshard gas limit is not exhausted
         if evm_state.gas_used < xshard_gas_limit:
@@ -1615,10 +1616,11 @@ class ShardState:
 
         if receipt.contract_address != Address.create_empty_account(0):
             address = receipt.contract_address
-            check(
-                address.full_shard_key
-                == self.evm_state.get_full_shard_key(address.recipient)
-            )
+            if self.evm_state.account_exists(address.recipient):
+                check(
+                    address.full_shard_key
+                    == self.evm_state.get_full_shard_key(address.recipient)
+                )
         return block, index, receipt
 
     def get_all_transactions(self, start: bytes, limit: int):
@@ -1866,6 +1868,24 @@ class ShardState:
             return None
         return self._get_evm_state_for_new_block(block)
 
+    def _get_evm_state_from_hash(self, block_hash: bytes) -> Optional[EvmState]:
+        if block_hash == self.header_tip.get_hash():
+            return self.evm_state
+
+        # note `_get_evm_state_for_new_block` actually fetches the state in the previous block
+        # first get the current block then get next block through height
+        block = self.db.get_minor_block_by_hash(block_hash)
+        if not block:
+            Logger.error("Failed to get block with hash {}".format(block_hash.hex()))
+            return None
+        next_block = self.db.get_minor_block_by_height(block.header.height + 1)
+        if next_block.header.hash_prev_minor_block != block_hash:
+            Logger.error(
+                "Blocks not correctly linked at height {}".format(block.header.height)
+            )
+            return None
+        return self._get_evm_state_for_new_block(next_block)
+
     def _get_posw_coinbase_blockcnt(self, header_hash: bytes) -> Dict[bytes, int]:
         """ PoSW needed function: get coinbase addresses up until the given block
         hash (inclusive) along with block counts within the PoSW window.
@@ -1940,7 +1960,7 @@ class ShardState:
         ):
             return 0, bytes(20)
 
-        #  call the contract's 'getLockedStakes' function
+        # call the contract's 'getLockedStakes' function
         mock_sender = bytes(20)  # empty address
         data = bytes.fromhex("fd8c4646000000000000000000000000") + recipient
         evm_tx = EvmTransaction(
@@ -1987,3 +2007,28 @@ class ShardState:
             self.env.quark_chain_config.block_reward_decay_factor.denominator ** epoch
         )
         return value * decay_numerator // decay_denominator
+
+    def get_total_balance(
+        self,
+        token_id: int,
+        block_hash: bytes,
+        limit: int,
+        start: Optional[bytes] = None,
+    ) -> Tuple[int, bytes]:
+        """
+        Start should be exclusive during the iteration.
+        """
+        evm_state = self._get_evm_state_from_hash(block_hash)
+        if not evm_state:
+            raise Exception("block hash not found")
+        trie = evm_state.trie.trie
+        total = 0
+        key = start or bytes(32)  # convert None to empty bytes
+        while limit > 0:
+            key = trie.next(key)
+            if not key:
+                break
+            addr = evm_state.db.get(key)
+            total += evm_state.get_balance(addr, token_id, should_cache=False)
+            limit -= 1
+        return total, key or bytes(32)
