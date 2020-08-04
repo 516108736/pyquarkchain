@@ -95,8 +95,8 @@ def prometheus_balance(args):
         time.sleep(args.interval)
 
 def scf_blockHeight(args):
-
-    ipList=args.blockHeightIpList.strip().split(seq=",")
+    print("---",args.blockHeightIpList)
+    ipList=args.blockHeightIpList.strip().split(",")
     # block_height_by_ip=Gauge("block_height_by_ip","block height by ip")
 
     fetchers=[]
@@ -152,7 +152,7 @@ def main():
 
     args = parser.parse_args()
 
-    host = "http://localhost:38391"
+    host = "http://localhost:38391,"
     if args.host:
         host = args.host
         # Assumes http by default.
