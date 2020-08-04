@@ -107,7 +107,7 @@ def scf_blockHeight(args):
     while True:
         try:
             print("start---")
-            for ip,f in fetchers.keys():
+            for ip,f in fetchers.items():
                 res = f.cli.send(
                     jsonrpcclient.Request("getRootBlockByHeight"), timeout=TIMEOUT
                 )
