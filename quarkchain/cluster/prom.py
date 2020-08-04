@@ -21,7 +21,7 @@ import jsonrpcclient
 logging.getLogger("jsonrpcclient.client.request").setLevel(logging.WARNING)
 logging.getLogger("jsonrpcclient.client.response").setLevel(logging.WARNING)
 
-TIMEOUT = 10
+TIMEOUT = 100
 fetcher = None
 
 
