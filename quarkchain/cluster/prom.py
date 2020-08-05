@@ -126,7 +126,7 @@ def scf_blockHeight(args):
                 if not res:
                     raise RuntimeError("fdadsadsadsa")
                 data=len(res["peers"])
-                print("ppppppppppppppp",ip,data)
+                block_height_gauge.labels(ip,"peer_nubmer").set(data)
         except Exception as e:
             print("failed to get latest root block height---", e)
             # Rpc not ready, wait and try again.
