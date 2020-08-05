@@ -95,21 +95,21 @@ def prometheus_balance(args):
         time.sleep(args.interval)
 
 def scf_blockHeight(args):
-    print("---",args.blockHeightIpList)
-    ipList=args.blockHeightIpList.strip().split(",")
-    # block_height_by_ip=Gauge("block_height_by_ip","block height by ip")
+    block_ip_list=args.blockHeightIpList.strip().split(",")
+    peer_ip_list=args.peerIpList.strip().split(",")
 
-    fetchers = {}
+    block_fetchers = {}
+    ip_fetchers = {}
     block_height_gauge=Gauge("MinorByGOQKC","block_heitht_by_ip",("ip","type"))
-    for ip in ipList:
-        fetchers[ip] = Fetcher(ip, TIMEOUT)
-        print("ip",ip,"tag")
-        block_height_gauge.labels(ip,"height").set(1)
-    print("ffffffffffffffffffffff",block_height_gauge,type(block_height_gauge))
+    for ip in block_ip_list:
+        block_fetchers[ip] = Fetcher(ip, TIMEOUT)
+    for ip in peer_ip_list:
+        ip_fetchers[ip]=Fetcher(ip,TIMEOUT)
+
     while True:
         try:
             print("start---")
-            for ip,f in fetchers.items():
+            for ip,f in block_fetchers.items():
                 res = f.cli.send(
                     jsonrpcclient.Request("getRootBlockByHeight"), timeout=TIMEOUT
                 )
@@ -118,6 +118,15 @@ def scf_blockHeight(args):
                 data=int(res["height"], 16)
                 print("ip",ip,"data",data)
                 block_height_gauge.labels(ip,"height").set(data)
+
+            for ip,f in ip_fetchers.items():
+                res=f.cli.send(
+                    jsonrpcclient.Request("getPeers"), timeout=TIMEOUT
+                )
+                if not res:
+                    raise RuntimeError("fdadsadsadsa")
+                data=len(res["peers"])
+                print("ppppppppppppppp",ip,data)
         except Exception as e:
             print("failed to get latest root block height---", e)
             # Rpc not ready, wait and try again.
@@ -150,6 +159,12 @@ def main():
 
     parser.add_argument(
         "--blockHeightIpList",
+        type=str,
+        help="scf"
+    )
+
+    parser.add_argument(
+        "--peerIpList",
         type=str,
         help="scf"
     )
