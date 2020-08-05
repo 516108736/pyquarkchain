@@ -99,29 +99,31 @@ def scf_blockHeight(args):
     ipList=args.blockHeightIpList.strip().split(",")
     # block_height_by_ip=Gauge("block_height_by_ip","block height by ip")
 
+    fetchers = {}
     block_height_gauge=Gauge("MinorByGOQKC","block_heitht_by_ip",("ip","type"))
     for ip in ipList:
+        fetchers[ip] = Fetcher(ip, TIMEOUT)
         print("ip",ip,"tag")
         block_height_gauge.labels(ip,"height").set(1)
     print("ffffffffffffffffffffff",block_height_gauge,type(block_height_gauge))
-    # while True:
-    #     try:
-    #         print("start---")
-    #         for ip,f in fetchers.items():
-    #             res = f.cli.send(
-    #                 jsonrpcclient.Request("getRootBlockByHeight"), timeout=TIMEOUT
-    #             )
-    #             if not res:
-    #                 raise RuntimeError("Failed to get latest block height-115")
-    #             data=int(res["height"], 16)
-    #             print("ip",ip,"data",data)
-    #             block_height_gauge[ip].set(data)
-    #     except Exception as e:
-    #         print("failed to get latest root block height---", e)
-    #         # Rpc not ready, wait and try again.
-    #         time.sleep(3)
-    #         continue
-    #     time.sleep(args.interval)
+    while True:
+        try:
+            print("start---")
+            for ip,f in fetchers.items():
+                res = f.cli.send(
+                    jsonrpcclient.Request("getRootBlockByHeight"), timeout=TIMEOUT
+                )
+                if not res:
+                    raise RuntimeError("Failed to get latest block height-115")
+                data=int(res["height"], 16)
+                print("ip",ip,"data",data)
+                block_height_gauge.labels(ip,"height").set(data)
+        except Exception as e:
+            print("failed to get latest root block height---", e)
+            # Rpc not ready, wait and try again.
+            time.sleep(3)
+            continue
+        time.sleep(args.interval)
 
 def main():
     parser = argparse.ArgumentParser()
