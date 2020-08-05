@@ -103,7 +103,7 @@ def scf_blockHeight(args):
     for ip in ipList:
         print("ip",ip,"tag")
         block_height_gauge.labels(ip,"height").set(1)
-    print("ffffffffffffffffffffff",block_height_gauge,b)
+    print("ffffffffffffffffffffff",block_height_gauge,type(block_height_gauge))
     # while True:
     #     try:
     #         print("start---")
