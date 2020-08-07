@@ -116,7 +116,7 @@ def scf_blockHeight(args):
                 if not res:
                     raise RuntimeError("Failed to get latest block height-115")
                 data=int(res["height"], 16)
-                print("ip",ip,"data",data)
+                print("height_ip",ip,"data",data)
                 block_height_gauge.labels(ip,"height").set(data)
 
             for ip,f in ip_fetchers.items():
@@ -126,6 +126,7 @@ def scf_blockHeight(args):
                 if not res:
                     raise RuntimeError("fdadsadsadsa")
                 data=len(res["peers"])
+                print("peer_ip", ip, "data", data)
                 block_height_gauge.labels(ip,"peer_nubmer").set(data)
         except Exception as e:
             print("failed to get latest root block height---", e)
