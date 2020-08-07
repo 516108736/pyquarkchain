@@ -136,6 +136,8 @@ def scf_blockHeight(args):
         time.sleep(args.interval)
 
 def main():
+
+    #nohup python3 -u prom.py --host 127.0.0.1:38391 --enable_count_balance --tokens QKC,BTC --blockHeightIpList=http://13.228.159.171:38391,http://52.194.81.124:38391,http://34.208.170.17:38391,http://54.203.168.137:38391,http://209.97.147.80:38391 --peerIpList=http://13.228.159.171:38391,http://52.194.81.124:38391 --interval 60 > test.log 2>&1 &
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--enable_count_balance",
