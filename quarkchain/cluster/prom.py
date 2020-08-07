@@ -111,7 +111,7 @@ def scf_blockHeight(args):
             print("start---")
             for ip,f in block_fetchers.items():
                 res = f.cli.send(
-                    jsonrpcclient.Request("getRootBlockByHeight"), timeout=TIMEOUT
+                    jsonrpcclient.Request("getRootBlockByHeight",None), timeout=TIMEOUT
                 )
                 if not res:
                     raise RuntimeError("Failed to get latest block height-115")
