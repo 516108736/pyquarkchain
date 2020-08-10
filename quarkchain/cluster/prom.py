@@ -100,7 +100,7 @@ def scf_blockHeight(args):
 
     block_fetchers = {}
     ip_fetchers = {}
-    block_height_gauge=Gauge("MinorByGOQKC","block_heitht_by_ip",("ip","type"))
+    block_height_gauge=Gauge("GoQKCBeijingData","block_heitht_by_ip",("ip","type"))
     for ip in block_ip_list:
         block_fetchers[ip] = Fetcher(ip, TIMEOUT)
     for ip in peer_ip_list:
